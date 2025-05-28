@@ -18,7 +18,7 @@ def text_to_audio(text, output_path="output_audio.mp3"):
     chunks = split_text(text)
     temp_files = []
 
-    for i, chunk in enumerate(chunks):
+    for chunk in chunks:
         tts = gTTS(chunk)
         temp_path = f"temp_{uuid.uuid4().hex}.mp3"
         tts.save(temp_path)
@@ -38,21 +38,20 @@ def text_to_audio(text, output_path="output_audio.mp3"):
     return output_path
 
 def create_text_image(text, img_path="text_image.png", size=(640, 480), bg_color="white", text_color="black"):
-    """Create an image with wrapped text using PIL."""
+    """Create an image with wrapped text using PIL (compatible with modern Pillow)."""
     img = Image.new("RGB", size, color=bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Try to load a TTF font, fallback to default if not found
     try:
         font = ImageFont.truetype("arial.ttf", 24)
     except IOError:
         font = ImageFont.load_default()
 
-    # Wrap text to fit width
     lines = textwrap.wrap(text, width=40)
     y_text = 20
     for line in lines:
-        width, height = draw.textsize(line, font=font)
+        bbox = draw.textbbox((0, 0), line, font=font)
+        width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
         x_text = (size[0] - width) / 2
         draw.text((x_text, y_text), line, font=font, fill=text_color)
         y_text += height + 5
@@ -69,7 +68,7 @@ def create_video_with_audio(text, audio_path, video_path="output_video.mp4"):
     video = image_clip.set_audio(audio_clip)
     video.write_videofile(video_path, fps=24, codec='libx264', audio_codec='aac')
 
-    os.remove(img_path)  # clean up temp image
+    os.remove(img_path)  # clean up temporary image
     return video_path
 
 # --- Streamlit UI ---
@@ -85,12 +84,11 @@ if st.button("Generate Video"):
     else:
         with st.spinner("Generating audio and video..."):
             audio_file = text_to_audio(text, "output_audio.mp3")
-            video_file = create_video_with_audio(text, audio_file, "output_video.mp4")
-
-        if video_file:
-            st.success("✅ Generation complete!")
-            st.video(video_file)
-            st.audio(audio_file)
-            st.download_button("⬇️ Download Audio", open(audio_file, 'rb'), file_name="narration.mp3", mime="audio/mpeg")
-        else:
-            st.error("Failed to generate video. Please check the error above.")
+            try:
+                video_file = create_video_with_audio(text, audio_file, "output_video.mp4")
+                st.success("✅ Generation complete!")
+                st.video(video_file)
+                st.audio(audio_file)
+                st.download_button("⬇️ Download Audio", open(audio_file, 'rb'), file_name="narration.mp3", mime="audio/mpeg")
+            except Exception as e:
+                st.error(f"Failed to generate video. Error: {e}")
