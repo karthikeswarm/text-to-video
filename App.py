@@ -6,12 +6,14 @@ import os
 import textwrap
 import uuid
 
-# Split large text into manageable chunks for TTS
+# --- Utility Functions ---
+
 def split_text(text, max_chars=4500):
+    """Split text into chunks suitable for gTTS."""
     return textwrap.wrap(text, max_chars, break_long_words=False, replace_whitespace=False)
 
-# Generate audio from text chunks and combine
 def text_to_audio(text, output_path="output_audio.mp3"):
+    """Convert text to audio by splitting into chunks and merging them."""
     chunks = split_text(text)
     combined = AudioSegment.empty()
 
@@ -25,8 +27,8 @@ def text_to_audio(text, output_path="output_audio.mp3"):
     combined.export(output_path, format="mp3")
     return output_path
 
-# Create a video with audio and overlaid text
 def create_video_with_audio(text, audio_path, video_path="output_video.mp4"):
+    """Create a video with overlaid text and background audio."""
     audio_clip = AudioFileClip(audio_path)
     text_clip = TextClip(
         txt=text,
@@ -41,11 +43,12 @@ def create_video_with_audio(text, audio_path, video_path="output_video.mp4"):
     video.write_videofile(video_path, fps=24, codec='libx264', audio_codec='aac')
     return video_path
 
-# Streamlit UI
+# --- Streamlit UI ---
+
 st.set_page_config(page_title="Text to Video Generator", layout="centered")
 st.title("📽️ Text to Video with Audio Generator")
 
-text = st.text_area("Enter your text here:", height=300)
+text = st.text_area("Enter your text below (no length limit):", height=300)
 
 if st.button("Generate Video"):
     if not text.strip():
@@ -55,7 +58,7 @@ if st.button("Generate Video"):
             audio_file = text_to_audio(text, "output_audio.mp3")
             video_file = create_video_with_audio(text, audio_file, "output_video.mp4")
 
-        st.success("Generation complete!")
+        st.success("✅ Generation complete!")
         st.video(video_file)
         st.audio(audio_file)
         st.download_button("⬇️ Download Audio", open(audio_file, 'rb'), file_name="narration.mp3", mime="audio/mpeg")
